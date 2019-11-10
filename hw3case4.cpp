@@ -4,7 +4,7 @@
 
 using namespace std;
 
-#define PORT 23460  // my UDP port
+#define PORT 51092  // my UDP port
 #define MAX 20000   // times of message transfer
 #define MAXWIN 30   // the maximum window size
 #define LOOP 10     // loop in test 4 and 5
@@ -30,8 +30,8 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
 enum myPartType { CLIENT, SERVER, ERROR } myPart;
 
 int main(int argc, char *argv[]) {
-    int message[MSGSIZE /
-                4];        // prepare a 1460-byte message: 1460/4 = 365 ints;
+    // prepare a 1460-byte message: 1460/4 = 365 ints;
+    int message[MSGSIZE / 4];
     UdpSocket sock(PORT);  // define a UDP socket
 
     myPart = (argc == 1) ? SERVER : CLIENT;
@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
     cerr << "   1: unreliable test" << endl;
     cerr << "   2: stop-and-wait test" << endl;
     cerr << "   3: sliding windows" << endl;
+    cerr << "   4: sliding windows with loss" << endl;
     cerr << "--> ";
     cin >> testNumber;
 
@@ -86,6 +87,22 @@ int main(int argc, char *argv[]) {
                     cerr << "retransmits = " << retransmits << endl;
                 }
                 break;
+            case 4:
+                timer.start();  // start timer
+                retransmits = clientSlidingWindow(sock, MAX, message,
+                                                  1);  // actual test
+                cerr << "Window size = 1";             // lap timer
+                cerr << "Elasped time = ";
+                cerr << timer.lap() << endl;
+                cerr << "retransmits = " << retransmits << endl;
+                timer.start();  // start timer
+                retransmits = clientSlidingWindow(sock, MAX, message,
+                                                  30);  // actual test
+                cerr << "Window size = 30";             // lap timer
+                cerr << "Elasped time = ";
+                cerr << timer.lap() << endl;
+                cerr << "retransmits = " << retransmits << endl;
+                break;
             default:
                 cerr << "no such test case" << endl;
                 break;
@@ -102,6 +119,10 @@ int main(int argc, char *argv[]) {
             case 3:
                 for (int windowSize = 1; windowSize <= MAXWIN; windowSize++)
                     serverEarlyRetrans(sock, MAX, message, windowSize);
+                break;
+            case 4:
+                serverEarlyRetrans(sock, MAX, message, 1);
+                serverEarlyRetrans(sock, MAX, message, 30);
                 break;
             default:
                 cerr << "no such test case" << endl;
@@ -131,17 +152,16 @@ void clientUnreliable(UdpSocket &sock, const int max, int message[]) {
     for (int i = 0; i < max; i++) {
         message[0] = i;                         // message[0] has a sequence #
         sock.sendTo((char *)message, MSGSIZE);  // udp message send
-        cerr << "message = " << message[0] << endl;
+        // cerr << "message = " << message[0] << endl;
     }
 }
 
 // Test1: server unreliable message receive -----------------------------------
 void serverUnreliable(UdpSocket &sock, const int max, int message[]) {
     cerr << "server unreliable test:" << endl;
-
     // receive message[] max times
     for (int i = 0; i < max; i++) {
         sock.recvFrom((char *)message, MSGSIZE);  // udp message receive
-        cerr << message[0] << endl;               // print out message
+        // cerr << message[0] << endl;               // print out message
     }
 }

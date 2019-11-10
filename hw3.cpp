@@ -97,8 +97,7 @@ int main(int argc, char *argv[]) {
                 serverUnreliable(sock, MAX, message);
                 break;
             case 2:
-                cout << "Server sent " << serverReliable(sock, MAX, message)
-                     << " Acks" << endl;
+                serverReliable(sock, MAX, message);
                 break;
             case 3:
                 for (int windowSize = 1; windowSize <= MAXWIN; windowSize++)
@@ -132,17 +131,16 @@ void clientUnreliable(UdpSocket &sock, const int max, int message[]) {
     for (int i = 0; i < max; i++) {
         message[0] = i;                         // message[0] has a sequence #
         sock.sendTo((char *)message, MSGSIZE);  // udp message send
-        cerr << "message = " << message[0] << endl;
+        // cerr << "message = " << message[0] << endl;
     }
 }
 
 // Test1: server unreliable message receive -----------------------------------
 void serverUnreliable(UdpSocket &sock, const int max, int message[]) {
     cerr << "server unreliable test:" << endl;
-
     // receive message[] max times
     for (int i = 0; i < max; i++) {
         sock.recvFrom((char *)message, MSGSIZE);  // udp message receive
-        cerr << message[0] << endl;               // print out message
+        // cerr << message[0] << endl;               // print out message
     }
 }
