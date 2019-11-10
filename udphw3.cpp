@@ -126,7 +126,6 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
             nextInSequence++;
         } else {
             timer.start();
-            bool windowMoved = false;
 
             // spin wait for either ack or timeout
             while ((timer.lap() < TIMEOUT) && (sock.pollRecvFrom() <= 0))
@@ -139,16 +138,13 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
                 // check if you recieved that is in the window
                 if (ack > windowBase) {
                     windowBase = ack;
-                    windowMoved = true;
                 }
             }
             // spinwait ended due to timeout set expected packet to first in
             // window
             else {
-                if (!windowMoved) {
-                    // cerr << "Timout windowBase: " << windowBase << endl;
-                    nextInSequence = windowBase;
-                }
+                // set the next in sequence to the window base
+                nextInSequence = windowBase;
             }
 
             // cerr << "message = " << message[0] << endl;

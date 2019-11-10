@@ -30,10 +30,13 @@
 *.exe
 *.out
 *.app
-hw3case4
-hw3
 hw3
 hw3case4
+
+# other documentation
 *.txt
-JLandron_HW3report.docx
-HW3_resultsAnalysis.xlsx
+*.docx
+*.xlsx
+*.a1
+*.xml
+*.cppcheck

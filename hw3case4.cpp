@@ -64,14 +64,14 @@ int main(int argc, char *argv[]) {
             case 1:
                 timer.start();                         // start timer
                 clientUnreliable(sock, MAX, message);  // actual test
-                cerr << "Elasped time = ";             // lap timer
+                cerr << "Elapsed time = ";             // lap timer
                 cout << timer.lap() << endl;
                 break;
             case 2:
                 timer.start();  // start timer
                 retransmits =
                     clientStopWait(sock, MAX, message);  // actual test
-                cerr << "Elasped time = ";               // lap timer
+                cerr << "Elapsed time = ";               // lap timer
                 cout << timer.lap() << endl;
                 cerr << "retransmits = " << retransmits << endl;
                 break;
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
                         sock, MAX, message, windowSize);  // actual test
                     cerr << "Window size = ";             // lap timer
                     cout << windowSize << " ";
-                    cerr << "Elasped time = ";
+                    cerr << "Elapsed time = ";
                     cout << timer.lap() << endl;
                     cerr << "retransmits = " << retransmits << endl;
                 }
@@ -93,14 +93,14 @@ int main(int argc, char *argv[]) {
                     retransmits = clientSlidingWindow(sock, MAX, message,
                                                       1);  // actual test
                     cerr << "Window size = 1" << endl;     // lap timer
-                    cerr << "Elasped time = ";
+                    cerr << "Elapsed time = ";
                     cerr << timer.lap() << endl;
                     cerr << "retransmits = " << retransmits << endl;
                     timer.start();  // start timer
                     retransmits = clientSlidingWindow(sock, MAX, message,
                                                       30);  // actual test
                     cerr << "Window size = 30" << endl;     // lap timer
-                    cerr << "Elasped time = ";
+                    cerr << "Elapsed time = ";
                     cerr << timer.lap() << endl;
                     cerr << "retransmits = " << retransmits << endl;
                 }

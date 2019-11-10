@@ -128,7 +128,6 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
             nextInSequence++;
         } else {
             timer.start();
-            bool windowMoved = false;
 
             // spin wait for either ack or timeout
             while ((timer.lap() < TIMEOUT) && (sock.pollRecvFrom() <= 0))
@@ -141,16 +140,12 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
                 // cerr << "received Ack " << ack << endl;
                 if (ack > windowBase) {
                     windowBase = ack;
-                    windowMoved = true;
                 }
             }
             // spinwait ended due to timeout set expected packet to first in
             // window
             else {
-                if (!windowMoved) {
-                    // cerr << "Timout windowBase: " << windowBase << endl;
-                    nextInSequence = windowBase;
-                }
+                nextInSequence = windowBase;
             }
 
             // cerr << "message = " << message[0] << endl;
@@ -178,7 +173,7 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
     srand(time(nullptr));
     // random number between 0 and 10 for packet loss percentage between 0-10%
     int lossInterval = rand() % 11;
-    bool droppedOnce = false;
+
     cerr << "server early retransmit test:" << endl;
     vector<bool> sent(max, false);
     int acksSent = 0;
