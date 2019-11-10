@@ -153,7 +153,7 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
                 }
             }
 
-            cerr << "message = " << message[0] << endl;
+            // cerr << "message = " << message[0] << endl;
         }
     }
     return retransmitted;
@@ -202,7 +202,7 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
                 acksSent++;
             }
         }
-        cerr << "message = " << message[0] << endl;
+        // cerr << "message = " << message[0] << endl;
     }
     cout << "Packet drop percentage: " << lossInterval << endl;
     cout << "Server sent " << acksSent << " Acks" << endl;

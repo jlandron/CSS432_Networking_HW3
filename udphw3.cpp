@@ -193,6 +193,7 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
             sock.ackTo((char *)&ackNum, sizeof(int));
             acksSent++;
         }
+        // cerr << "message = " << message[0] << endl;
     }
     cout << "Server sent " << acksSent << " Acks" << endl;
 }

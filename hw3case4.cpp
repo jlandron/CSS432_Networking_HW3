@@ -91,14 +91,14 @@ int main(int argc, char *argv[]) {
                 timer.start();  // start timer
                 retransmits = clientSlidingWindow(sock, MAX, message,
                                                   1);  // actual test
-                cerr << "Window size = 1";             // lap timer
+                cerr << "Window size = 1" << endl;     // lap timer
                 cerr << "Elasped time = ";
                 cerr << timer.lap() << endl;
                 cerr << "retransmits = " << retransmits << endl;
                 timer.start();  // start timer
                 retransmits = clientSlidingWindow(sock, MAX, message,
                                                   30);  // actual test
-                cerr << "Window size = 30";             // lap timer
+                cerr << "Window size = 30" << endl;     // lap timer
                 cerr << "Elasped time = ";
                 cerr << timer.lap() << endl;
                 cerr << "retransmits = " << retransmits << endl;
