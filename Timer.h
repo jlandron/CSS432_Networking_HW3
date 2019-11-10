@@ -23,7 +23,8 @@ class Timer {
     long getSec();                              // get startTime.tv_sec
     long getUsec();                             // get startTime.tv_usec
    private:
-    struct timeval startTime;  // Memorize the time to have started an evaluation
+    struct timeval
+        startTime;           // Memorize the time to have started an evaluation
     struct timeval endTime;  // Memorize the time to have stopped an evaluation
 };
 

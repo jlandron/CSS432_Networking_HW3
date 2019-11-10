@@ -30,8 +30,8 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
 enum myPartType { CLIENT, SERVER, ERROR } myPart;
 
 int main(int argc, char *argv[]) {
-    int message[MSGSIZE /
-                4];        // prepare a 1460-byte message: 1460/4 = 365 ints;
+    // prepare a 1460-byte message: 1460/4 = 365 ints;
+    int message[MSGSIZE / 4];
     UdpSocket sock(PORT);  // define a UDP socket
 
     myPart = (argc == 1) ? SERVER : CLIENT;
@@ -97,7 +97,8 @@ int main(int argc, char *argv[]) {
                 serverUnreliable(sock, MAX, message);
                 break;
             case 2:
-                serverReliable(sock, MAX, message);
+                cout << "Server sent " << serverReliable(sock, MAX, message)
+                     << " Acks" << endl;
                 break;
             case 3:
                 for (int windowSize = 1; windowSize <= MAXWIN; windowSize++)
