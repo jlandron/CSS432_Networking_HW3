@@ -136,7 +136,7 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
             if (sock.pollRecvFrom() > 0) {
                 int ack;
                 sock.recvFrom((char *)&ack, sizeof(int));
-                // cerr << "received Ack " << ack << endl;
+                // check if you recieved that is in the window
                 if (ack > windowBase) {
                     windowBase = ack;
                     windowMoved = true;
@@ -180,14 +180,17 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
     while (nextExpectedSequenceNum < max) {
         sock.recvFrom((char *)message, MSGSIZE);  // udp message receive
         int seqNum = message[0];
-        sent[seqNum] = true;
+        sent[seqNum] = true;  // marked received
         if (seqNum == nextExpectedSequenceNum) {
             // increase expected count until you hit an unsent packet
+            // this means that the server will ack packets either in order or
+            // after a retransmission from the client
             while (nextExpectedSequenceNum < max &&
                    sent[nextExpectedSequenceNum]) {
                 nextExpectedSequenceNum++;
             }
         }
+        // ack any packet, even out of order
         int ackNum = nextExpectedSequenceNum;
         if (ackNum <= max) {
             sock.ackTo((char *)&ackNum, sizeof(int));
