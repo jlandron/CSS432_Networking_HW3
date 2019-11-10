@@ -88,20 +88,22 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case 4:
-                timer.start();  // start timer
-                retransmits = clientSlidingWindow(sock, MAX, message,
-                                                  1);  // actual test
-                cerr << "Window size = 1" << endl;     // lap timer
-                cerr << "Elasped time = ";
-                cerr << timer.lap() << endl;
-                cerr << "retransmits = " << retransmits << endl;
-                timer.start();  // start timer
-                retransmits = clientSlidingWindow(sock, MAX, message,
-                                                  30);  // actual test
-                cerr << "Window size = 30" << endl;     // lap timer
-                cerr << "Elasped time = ";
-                cerr << timer.lap() << endl;
-                cerr << "retransmits = " << retransmits << endl;
+                for (int i = 0; i < 15; i++) {
+                    timer.start();  // start timer
+                    retransmits = clientSlidingWindow(sock, MAX, message,
+                                                      1);  // actual test
+                    cerr << "Window size = 1" << endl;     // lap timer
+                    cerr << "Elasped time = ";
+                    cerr << timer.lap() << endl;
+                    cerr << "retransmits = " << retransmits << endl;
+                    timer.start();  // start timer
+                    retransmits = clientSlidingWindow(sock, MAX, message,
+                                                      30);  // actual test
+                    cerr << "Window size = 30" << endl;     // lap timer
+                    cerr << "Elasped time = ";
+                    cerr << timer.lap() << endl;
+                    cerr << "retransmits = " << retransmits << endl;
+                }
                 break;
             default:
                 cerr << "no such test case" << endl;
@@ -121,8 +123,10 @@ int main(int argc, char *argv[]) {
                     serverEarlyRetrans(sock, MAX, message, windowSize);
                 break;
             case 4:
-                serverEarlyRetrans(sock, MAX, message, 1);
-                serverEarlyRetrans(sock, MAX, message, 30);
+                for (int i = 0; i < 15; i++) {
+                    serverEarlyRetrans(sock, MAX, message, 1);
+                    serverEarlyRetrans(sock, MAX, message, 30);
+                }
                 break;
             default:
                 cerr << "no such test case" << endl;
