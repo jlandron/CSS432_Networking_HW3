@@ -176,7 +176,7 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
 void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
                         int windowSize) {
     srand(time(nullptr));
-    // random number between 1 and 10 for packet loss percentage between 0-10%
+    // random number between 0 and 10 for packet loss percentage between 0-10%
     int lossInterval = rand() % 11;
     bool droppedOnce = false;
     cerr << "server early retransmit test:" << endl;
@@ -186,30 +186,20 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
     while (nextExpectedSequenceNum < max) {
         sock.recvFrom((char *)message, MSGSIZE);  // udp message receive
         int seqNum = message[0];
-        sent[seqNum] = true;
-        if (seqNum == nextExpectedSequenceNum) {
-            // increase expected count until you hit an unsent packet
-            while (nextExpectedSequenceNum < max &&
-                   sent[nextExpectedSequenceNum]) {
-                nextExpectedSequenceNum++;
+        // handle packet if it is not "dropped"
+        if ((rand() % 100) > lossInterval) {
+            sent[seqNum] = true;
+            if (seqNum == nextExpectedSequenceNum) {
+                // increase expected count until you hit an unsent packet
+                while (nextExpectedSequenceNum < max &&
+                       sent[nextExpectedSequenceNum]) {
+                    nextExpectedSequenceNum++;
+                }
             }
-        }
-        int ackNum = nextExpectedSequenceNum;
-        if (ackNum <= max) {
-            // check if packet should be dropped for this test
-            if (ackNum % lossInterval != 0) {
+            int ackNum = nextExpectedSequenceNum;
+            if (ackNum <= max) {
                 sock.ackTo((char *)&ackNum, sizeof(int));
                 acksSent++;
-            } else {
-                if (droppedOnce) {
-                    sock.ackTo((char *)&ackNum, sizeof(int));
-                    acksSent++;
-                    droppedOnce = false;
-                }
-                // packet is not acked and considered dropped
-                else {
-                    droppedOnce = true;
-                }
             }
         }
         cerr << "message = " << message[0] << endl;
