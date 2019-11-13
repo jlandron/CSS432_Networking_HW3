@@ -170,7 +170,7 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
  **/
 void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
                         int windowSize) {
-    srand(time(nullptr));
+    srand(time(0));
     // random number between 0 and 10 for packet loss percentage between 0-10%
     int lossInterval = rand() % 11;
     cerr << "server early retransmit test:" << endl;
