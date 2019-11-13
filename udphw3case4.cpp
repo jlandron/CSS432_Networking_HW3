@@ -23,7 +23,6 @@ void serverReliable(UdpSocket &sock, const int max, int message[]) {
             sock.recvFrom((char *)message, MSGSIZE);  // udp message receive
             if (message[0] == sequence) {
                 sock.ackTo((char *)&sequence, sizeof(int));
-                // cerr << "Ack = " << sequence << endl;
                 acksSent++;
             }
 
@@ -60,9 +59,10 @@ int clientStopWait(UdpSocket &sock, const int max, int message[]) {
 
         // start timout counter
         timer.start();
-        while ((sock.pollRecvFrom() <= 0)) {
-            // wait for a packet to be receivable
-            if ((timer.lap() > TIMEOUT)) {
+    POLL:
+        // wait for a packet to be receivable
+        while (sock.pollRecvFrom() <= 0) {
+            if (timer.lap() >= TIMEOUT) {               // resend after timeout
                 sock.sendTo((char *)message, MSGSIZE);  // resend udp message
                 timer.start();                          // restart timer
                 retransmitted++;
@@ -70,84 +70,32 @@ int clientStopWait(UdpSocket &sock, const int max, int message[]) {
         }
         int ack;
         sock.recvFrom((char *)&ack, sizeof(int));
+        // client checks to see if this ack is
+        // for the correct packet before moving on to the next packet
+        if (ack != sequence) {
+            // numGOTOs++;
+            goto POLL;
+        }
+
         // cerr << "message = " << message[0] << endl;
     }
     // cout << "Used GOTO " << numGOTOs << " times" << endl;
     return retransmitted;
 }
-
-/**
- * serverEarlyRetrans
- *
- *receives message[] and sends an acknowledgment to the client max (=20,000)
- *times using the sock object. Every time the server receives a new
- *message[], it marks the message's sequence number as received in an array
- *and return a cumulative acknowledgment, i.e., the last received message in
- *order.
- *
- * @param {UdpSocket} &sock : reference to socket
- * @param {const int} max   : max number of messages
- * @param {int} message[]   : message buffer
- * @param {int} windowSize  : size of sliding window on server side
- **/
-void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
-                        int windowSize) {
-    srand(time(NULL));
-    // random number between 0 and 10 for packet loss percentage between
-    // 0-10%
-    int lossInterval = rand() % 11;
-
-    cerr << "server early retransmit test:" << endl;
-    vector<bool> recvd(max, false);
-
-    int acksSent = 0;
-    int lastInOrderSequenceNum = 0;
-    while (lastInOrderSequenceNum < max) {
-        sock.recvFrom((char *)message, MSGSIZE);  // udp message receive
-        int seqNum = message[0];
-        recvd[seqNum] = true;  // marked acked
-        if (rand() % 100 > lossInterval) {
-            // cerr << "message = " << seqNum << endl;
-            // send ack
-            usleep(100);  // if server sends acks to fast and they are dropped
-                          // it may exit and the client could get stuck
-            sock.ackTo((char *)&lastInOrderSequenceNum, sizeof(int));
-            // if (lastInOrderSequenceNum % (max / 5) == 0) {
-            //     cerr << "Acked " << lastInOrderSequenceNum << endl;
-            // }
-
-            acksSent++;
-
-            while (lastInOrderSequenceNum < max &&
-                   recvd[lastInOrderSequenceNum]) {
-                // cerr << "Fastforward past: " << lastInOrderSequenceNum <<
-                // endl;
-                lastInOrderSequenceNum++;
-            }  // fast forward past
-               // received messages
-        }
-    }
-    // send the last ack one more time to be sure the client dosnt get stuck
-    // waiting
-    sock.ackTo((char *)&lastInOrderSequenceNum, sizeof(int));
-    cout << "Server sent " << acksSent << " Acks" << endl;
-}
-
 /**
  * clientSlidingWindow
  *
- *sends message[] and receiving an acknowledgment from a server max
- *(=20,000) times using the sock object. As described above, the client can
- *continuously send a new message[] and increasing the sequence number as
- *long as the number of in-transit messages (i.e., # of unacknowledged
- *messages) is less than "windowSize." That number should be decremented
- *every time the client receives an acknowledgment. If the number of
- *unacknowledged messages reaches "windowSize," the client should start a
- *Timer. If a timeout occurs (i.e., no response after 1500 usec), it must
- *resend the message with the minimum sequence number among those which have
- *not yet been acknowledged. The function must count the number of messages
- *(not bytes) re-transmitted and return it to the main function as its
- *return value.
+ *sends message[] and receiving an acknowledgment from a server max (=20,000)
+ *times using the sock object. As described above, the client can continuously
+ *send a new message[] and increasing the sequence number as long as the number
+ *of in-transit messages (i.e., # of unacknowledged messages) is less than
+ *"windowSize." That number should be decremented every time the client receives
+ *an acknowledgment. If the number of unacknowledged messages reaches
+ *"windowSize," the client should start a Timer. If a timeout occurs (i.e., no
+ *response after 1500 usec), it must resend the message with the minimum
+ *sequence number among those which have not yet been acknowledged. The function
+ *must count the number of messages (not bytes) re-transmitted and return it to
+ *the main function as its return value.
  *
  * @param {UdpSocket} &sock     : reference to socket
  * @param {const int} max       : max number of messages
@@ -164,40 +112,114 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
     int retransmitted = 0;
     int nextInSequence = 0;
     int windowBase = 0;
+
     // loop until all packets have been sent and all acks received
     while (nextInSequence < max || windowBase < max) {
-        // send as many messages as the window allows
         if ((nextInSequence < (windowBase + windowSize)) &&
-            (nextInSequence < max)) {
+            (nextInSequence < max)) {  // message is in window
             message[0] = nextInSequence;
             sock.sendTo((char *)message, MSGSIZE);  // udp message send
-            // cout << "Sequence: " << nextInSequence << endl;
+            //cerr << "message = " << message[0] << endl;
+            //!!!!testing out of order packets comment out!!!
+            // message[0] = (nextInSequence * nextInSequence) % max;
+            // sock.sendTo((char *)message, MSGSIZE);  // udp message send
+            // cerr << "message = " << message[0] << endl;
+            //!!!END TESTING!!!
             // check if packet was already sent once
             if (sent[nextInSequence]) {
                 retransmitted++;
             }
             // mark as sent
             sent[nextInSequence] = true;
+            // increment next in sequence
             nextInSequence++;
         } else {
             timer.start();
 
             // spin wait for either ack or timeout
-            while ((timer.lap() < TIMEOUT) && (sock.pollRecvFrom() <= 0))
+            while ((timer.lap() < TIMEOUT * 10) && (sock.pollRecvFrom() <= 0))
                 ;
+
             // check if spinwait ended because an ack was received
             if (sock.pollRecvFrom() > 0) {
-                int ack;
-                sock.recvFrom((char *)&ack, sizeof(int));
-                if (ack == windowBase) {
+                int ackRecv;
+                sock.recvFrom((char *)&ackRecv, sizeof(int));
+                // check if you received an ack that is in the window
+                if (ackRecv > windowBase) {  // if you get an ack from the
+                                             // "future", move window up
+                    windowBase = ackRecv;
+                } else if (ackRecv ==
+                           windowBase) {  // if ack is for windowBase, slide
+                                          // window up one
                     windowBase++;
-                } else if (ack > windowBase) {
-                    windowBase = ack;
                 }
-            } else {
+            }
+            // spinwait ended due to timeout set expected packet to first in
+            // window
+            else {
+                // set the next in sequence to the window base for resending
                 nextInSequence = windowBase;
             }
         }
     }
     return retransmitted;
+}
+/**
+ * serverEarlyRetrans
+ *
+ *receives message[] and sends an acknowledgment to the client max (=20,000)
+ *times using the sock object. Every time the server receives a new
+ *message[], it must save the message's sequence number in an array and
+ *return a cumulative acknowledgment, i.e., the last received message in
+ *order.
+ *
+ * @param {UdpSocket} &sock : reference to socket
+ * @param {const int} max   : max number of messages
+ * @param {int} message[]   : message buffer
+ * @param {int} windowSize  : size of sliding window on server side
+ **/
+void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
+                        int windowSize) {
+    srand(time(NULL));
+    // random number between 0 and 10 for packet loss percentage between 0-10%
+    int lossInterval = rand() % 11;
+
+    cerr << "server early retransmit test:" << endl;
+    vector<bool> sent(max, false);
+    // buffer for out of order packets
+    int acksSent = 0;
+    int lastInOrderSequenceNum = 0;
+    while (lastInOrderSequenceNum < max) {
+        sock.recvFrom((char *)message, MSGSIZE);  // udp message receive
+        int seqNum = message[0];
+        if ((rand() % 100) > lossInterval) {
+            sent[seqNum] = true;  // marked acked
+            // cerr << "message = " << seqNum << endl;
+            int ackNum = lastInOrderSequenceNum;
+            // send ack
+            if (ackNum < max) {
+                sock.ackTo((char *)&ackNum, sizeof(int));
+                // cerr << "Acked " << ackNum << endl;
+                acksSent++;
+            }
+            // check sequence order
+            if (seqNum == lastInOrderSequenceNum) {  // server received the next
+                                                     // packet in order
+                lastInOrderSequenceNum++;
+                while (lastInOrderSequenceNum < max &&
+                       sent[lastInOrderSequenceNum]) {
+                    // cerr << "Fastforward past: " << lastInOrderSequenceNum <<
+                    // endl;
+                    lastInOrderSequenceNum++;
+
+                }  // fast forward past
+                // received messages
+            } else {
+                // handle out of order packets with buffer
+            }
+        }
+        // ack any packet, even out of order
+    }
+    cout << "Packet drop percentage: " << lossInterval << endl;
+    cout << "Server sent " << acksSent << " Acks" << endl;
 }
