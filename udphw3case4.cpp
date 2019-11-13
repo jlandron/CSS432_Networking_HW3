@@ -190,12 +190,14 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
 
             if (sock.pollRecvFrom() > 0) {
                 startedReceiving = true;
-                if ((rand() % 100) > lossInterval * 5) {
-                    sock.recvFrom((char *)message,
-                                  MSGSIZE);  // udp message receive
-                    seqNum = message[0];
+                sock.recvFrom((char *)message,
+                              MSGSIZE);  // udp message receive
+                seqNum = message[0];
+                if ((rand() % 100) > lossInterval) {
                     received[seqNum] = true;  // marked received
                     // cerr << "Received " << seqNum << endl;
+                } else {
+                    continue;
                 }
             } else {
                 break;
