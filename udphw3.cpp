@@ -195,7 +195,6 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
                 break;  // TIMEOUT, break loop and send cumulative ack
             }
         }
-
         // increase expected count until you hit an packet the server has not
         // received this means that the server will perform a cumulative ack
         // based on timeout or if it received all expected packets
@@ -203,7 +202,6 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
                received[nextExpectedSequenceNum]) {
             nextExpectedSequenceNum++;
         }
-
         // ack any packet, even out of order
         if (nextExpectedSequenceNum <= max && startedReceiving) {
             sock.ackTo((char *)&nextExpectedSequenceNum, sizeof(int));
