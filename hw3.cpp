@@ -4,8 +4,8 @@
 
 using namespace std;
 
-#define PORT 23460  // my UDP port
-#define MAX 50      // times of message transfer
+#define PORT 51092  // my UDP port
+#define MAX 20000   // times of message transfer
 #define MAXWIN 30   // the maximum window size
 #define LOOP 10     // loop in test 4 and 5
 
@@ -75,17 +75,17 @@ int main(int argc, char *argv[]) {
                 cerr << "retransmits = " << retransmits << endl;
                 break;
             case 3:
-                // for (int windowSize = 1; windowSize <= MAXWIN; windowSize++)
-                // {
-                timer.start();  // start timer
-                retransmits =
-                    clientSlidingWindow(sock, MAX, message, 5);  // actual test
-                cerr << "Window size = ";                        // lap timer
-                cout << 5 << " ";
-                cerr << "Elasped time = ";
-                cout << timer.lap() << endl;
-                cerr << "retransmits = " << retransmits << endl;
-                //}
+                for (int windowSize = 1; windowSize <= MAXWIN; windowSize++) {
+                    timer.start();  // start timer
+                    retransmits =
+                        clientSlidingWindow(sock, MAX, message,
+                                            windowSize);  // actual test
+                    cerr << "Window size = ";             // lap timer
+                    cout << 5 << " ";
+                    cerr << "Elasped time = ";
+                    cout << timer.lap() << endl;
+                    cerr << "retransmits = " << retransmits << endl;
+                }
                 break;
             default:
                 cerr << "no such test case" << endl;
@@ -101,8 +101,8 @@ int main(int argc, char *argv[]) {
                 serverReliable(sock, MAX, message);
                 break;
             case 3:
-                // for (int windowSize = 1; windowSize <= MAXWIN; windowSize++)
-                serverEarlyRetrans(sock, MAX, message, 5);
+                for (int windowSize = 1; windowSize <= MAXWIN; windowSize++)
+                    serverEarlyRetrans(sock, MAX, message, windowSize);
                 break;
             default:
                 cerr << "no such test case" << endl;
