@@ -107,6 +107,7 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
     Timer timer;
     // vector<bool> to mark packets that have been sent
     vector<bool> sent(max, false);
+    vector<int> numAcks(max, 0);
     int retransmitted = 0;
     int nextInSequence = 0;
     int windowBase = 0;
@@ -117,6 +118,7 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
             (nextInSequence < max)) {
             message[0] = nextInSequence;
             sock.sendTo((char *)message, MSGSIZE);  // udp message send
+            // cerr << "Sent = " << nextInSequence << endl;
             // check if packet was already sent once
             if (sent[nextInSequence]) {
                 retransmitted++;
@@ -136,18 +138,17 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
                 int ack;
                 sock.recvFrom((char *)&ack, sizeof(int));
                 // check if you recieved that is in the window
+                // cerr << "Received = " << ack << endl;
                 if (ack > windowBase) {
                     windowBase = ack;
                 }
+
             }
             // spinwait ended due to timeout set expected packet to first in
             // window
             else {
-                // set the next in sequence to the window base
                 nextInSequence = windowBase;
             }
-
-            // cerr << "message = " << message[0] << endl;
         }
     }
     return retransmitted;
@@ -170,26 +171,43 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
 void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
                         int windowSize) {
     cerr << "server early retransmit test:" << endl;
-    vector<bool> sent(max, false);
+    vector<bool> received(max, false);
     int acksSent = 0;
     int nextExpectedSequenceNum = 0;
+    bool startedReceiving = false;
     while (nextExpectedSequenceNum < max) {
-        sock.recvFrom((char *)message, MSGSIZE);  // udp message receive
-        int seqNum = message[0];
-        sent[seqNum] = true;  // marked received
-        if (seqNum == nextExpectedSequenceNum) {
-            // increase expected count until you hit an unsent packet
-            // this means that the server will ack packets either in order or
-            // after a retransmission from the client
-            while (nextExpectedSequenceNum < max &&
-                   sent[nextExpectedSequenceNum]) {
-                nextExpectedSequenceNum++;
+        int seqNum;
+        Timer timer;
+        // expect to receive windowSize packets, set timer to keep server from
+        // hanging
+        for (int i = 0; i < windowSize; i++) {
+            timer.start();
+            while ((timer.lap() < TIMEOUT) && (sock.pollRecvFrom() <= 0))
+                ;
+
+            if (sock.pollRecvFrom() > 0) {
+                startedReceiving = true;
+                sock.recvFrom((char *)message,
+                              MSGSIZE);  // udp message receive
+                seqNum = message[0];
+                received[seqNum] = true;  // marked received
+            } else {
+                break;  // TIMEOUT, break loop and send cumulative ack
             }
         }
+
+        // increase expected count until you hit an packet the server has not
+        // received this means that the server will perform a cumulative ack
+        // based on timeout or if it received all expected packets
+        while (nextExpectedSequenceNum < max &&
+               received[nextExpectedSequenceNum]) {
+            nextExpectedSequenceNum++;
+        }
+
         // ack any packet, even out of order
-        int ackNum = nextExpectedSequenceNum;
-        if (ackNum <= max) {
-            sock.ackTo((char *)&ackNum, sizeof(int));
+        if (nextExpectedSequenceNum <= max && startedReceiving) {
+            sock.ackTo((char *)&nextExpectedSequenceNum, sizeof(int));
+            //cerr << "Cumulative ack: " << nextExpectedSequenceNum << endl;
             acksSent++;
         }
         // cerr << "message = " << message[0] << endl;

@@ -73,13 +73,11 @@ int clientStopWait(UdpSocket &sock, const int max, int message[]) {
         // client checks to see if this ack is
         // for the correct packet before moving on to the next packet
         if (ack != sequence) {
-            // numGOTOs++;
             goto POLL;
         }
 
         // cerr << "message = " << message[0] << endl;
     }
-    // cout << "Used GOTO " << numGOTOs << " times" << endl;
     return retransmitted;
 }
 /**
@@ -109,6 +107,7 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
     Timer timer;
     // vector<bool> to mark packets that have been sent
     vector<bool> sent(max, false);
+    vector<int> numAcks(max, 0);
     int retransmitted = 0;
     int nextInSequence = 0;
     int windowBase = 0;
@@ -119,6 +118,7 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
             (nextInSequence < max)) {
             message[0] = nextInSequence;
             sock.sendTo((char *)message, MSGSIZE);  // udp message send
+            // cerr << "Sent = " << nextInSequence << endl;
             // check if packet was already sent once
             if (sent[nextInSequence]) {
                 retransmitted++;
@@ -137,18 +137,18 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
             if (sock.pollRecvFrom() > 0) {
                 int ack;
                 sock.recvFrom((char *)&ack, sizeof(int));
-                // cerr << "received Ack " << ack << endl;
+                // check if you recieved that is in the window
+                // cerr << "Received = " << ack << endl;
                 if (ack > windowBase) {
                     windowBase = ack;
                 }
+
             }
             // spinwait ended due to timeout set expected packet to first in
             // window
             else {
                 nextInSequence = windowBase;
             }
-
-            // cerr << "message = " << message[0] << endl;
         }
     }
     return retransmitted;
@@ -173,32 +173,51 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
     srand(time(nullptr));
     // random number between 0 and 10 for packet loss percentage between 0-10%
     int lossInterval = rand() % 11;
-
     cerr << "server early retransmit test:" << endl;
-    vector<bool> sent(max, false);
+    vector<bool> received(max, false);
     int acksSent = 0;
     int nextExpectedSequenceNum = 0;
+    bool startedReceiving = false;
     while (nextExpectedSequenceNum < max) {
-        sock.recvFrom((char *)message, MSGSIZE);  // udp message receive
-        int seqNum = message[0];
-        // handle packet if it is not "dropped"
-        if ((rand() % 100) > lossInterval) {
-            sent[seqNum] = true;
-            if (seqNum == nextExpectedSequenceNum) {
-                // increase expected count until you hit an unsent packet
-                while (nextExpectedSequenceNum < max &&
-                       sent[nextExpectedSequenceNum]) {
-                    nextExpectedSequenceNum++;
+        int seqNum;
+        Timer timer;
+        /// expect to receive windowSize packets, set timer to keep server from
+        // hanging
+        for (int i = 0; i < windowSize; i++) {
+            timer.start();
+            while ((timer.lap() < TIMEOUT) && (sock.pollRecvFrom() <= 0))
+                ;
+
+            if (sock.pollRecvFrom() > 0) {
+                startedReceiving = true;
+                if ((rand() % 100) > lossInterval * 5) {
+                    sock.recvFrom((char *)message,
+                                  MSGSIZE);  // udp message receive
+                    seqNum = message[0];
+                    received[seqNum] = true;  // marked received
+                    // cerr << "Received " << seqNum << endl;
                 }
+            } else {
+                break;
             }
-            int ackNum = nextExpectedSequenceNum;
-            if (ackNum <= max) {
-                sock.ackTo((char *)&ackNum, sizeof(int));
-                acksSent++;
-            }
+        }
+
+        // increase expected count until you hit an unsent packet
+        // this means that the server will ack packets either in order or
+        // after a retransmission from the client
+        while (nextExpectedSequenceNum < max &&
+               received[nextExpectedSequenceNum]) {
+            nextExpectedSequenceNum++;
+        }
+
+        // ack any packet, even out of order
+        if (nextExpectedSequenceNum <= max && startedReceiving) {
+            sock.ackTo((char *)&nextExpectedSequenceNum, sizeof(int));
+            // cerr << "Cumulative ack: " << nextExpectedSequenceNum << endl;
+            acksSent++;
         }
         // cerr << "message = " << message[0] << endl;
     }
-    cout << "Packet drop percentage: " << lossInterval << endl;
+    cout << "Loss Interval: " << lossInterval << endl;
     cout << "Server sent " << acksSent << " Acks" << endl;
 }
