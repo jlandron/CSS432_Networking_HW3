@@ -96,6 +96,8 @@ int main(int argc, char *argv[]) {
                     cerr << "Elapsed time = ";
                     cerr << timer.lap() << endl;
                     cerr << "retransmits = " << retransmits << endl;
+                }
+                for (int i = 0; i < 15; i++) {
                     timer.start();  // start timer
                     retransmits = clientSlidingWindow(sock, MAX, message,
                                                       30);  // actual test
@@ -125,6 +127,8 @@ int main(int argc, char *argv[]) {
             case 4:
                 for (int i = 0; i < 15; i++) {
                     serverEarlyRetrans(sock, MAX, message, 1);
+                }
+                for (int i = 0; i < 15; i++) {
                     serverEarlyRetrans(sock, MAX, message, 30);
                 }
                 break;
