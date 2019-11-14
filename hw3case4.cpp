@@ -23,7 +23,7 @@ void serverUnreliable(UdpSocket &sock, const int max, int message[]);
 // You must implement the following two functions
 void serverReliable(UdpSocket &sock, const int max, int message[]);
 void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
-                        int windowSize);
+                        int windowSize, int N);
 // void serverEarlyRetrans( UdpSocket &sock, const int max, int message[],
 //			 int windowSize, bool congestion );
 
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case 4:
-                for (int i = 0; i < 15; i++) {
+                for (int i = 0; i <= 10; i++) {
                     timer.start();  // start timer
                     retransmits = clientSlidingWindow(sock, MAX, message,
                                                       1);  // actual test
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
                     cerr << timer.lap() << endl;
                     cerr << "retransmits = " << retransmits << endl;
                 }
-                for (int i = 0; i < 15; i++) {
+                for (int i = 0; i <= 10; i++) {
                     timer.start();  // start timer
                     retransmits = clientSlidingWindow(sock, MAX, message,
                                                       30);  // actual test
@@ -122,14 +122,14 @@ int main(int argc, char *argv[]) {
                 break;
             case 3:
                 for (int windowSize = 1; windowSize <= MAXWIN; windowSize++)
-                    serverEarlyRetrans(sock, MAX, message, windowSize);
+                    serverEarlyRetrans(sock, MAX, message, windowSize, 0);
                 break;
             case 4:
-                for (int i = 0; i < 15; i++) {
-                    serverEarlyRetrans(sock, MAX, message, 1);
+                for (int i = 0; i <= 10; i++) {
+                    serverEarlyRetrans(sock, MAX, message, 1, i);
                 }
-                for (int i = 0; i < 15; i++) {
-                    serverEarlyRetrans(sock, MAX, message, 30);
+                for (int i = 0; i <= 10; i++) {
+                    serverEarlyRetrans(sock, MAX, message, 30, i);
                 }
                 break;
             default:

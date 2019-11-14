@@ -107,7 +107,6 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
     Timer timer;
     // vector<bool> to mark packets that have been sent
     vector<bool> sent(max, false);
-    vector<int> numAcks(max, 0);
     int retransmitted = 0;
     int nextInSequence = 0;
     int windowBase = 0;
@@ -169,40 +168,39 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
  * @param {int} windowSize  : size of sliding window on server side
  **/
 void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
-                        int windowSize) {
+                        int windowSize, int lossInterval) {
     srand(time(0));
     // random number between 0 and 10 for packet loss percentage between 0-10%
-    int lossInterval = rand() % 11;
     cerr << "server early retransmit test:" << endl;
     vector<bool> received(max, false);
     int acksSent = 0;
     int nextExpectedSequenceNum = 0;
-    bool startedReceiving = false;
+    // bool startedReceiving = false;
     while (nextExpectedSequenceNum < max) {
         int seqNum;
-        Timer timer;
+        // Timer timer;
         /// expect to receive windowSize packets, set timer to keep server from
         // hanging
-        for (int i = 0; i < windowSize; i++) {
-            timer.start();
-            while ((timer.lap() < TIMEOUT) && (sock.pollRecvFrom() <= 0))
-                ;
+        // for (int i = 0; i < windowSize; i++) {
+        //  timer.start();
+        // while ((timer.lap() < TIMEOUT / 4) && (sock.pollRecvFrom() <= 0))
+        //  ;
 
-            if (sock.pollRecvFrom() > 0) {
-                startedReceiving = true;
-                sock.recvFrom((char *)message,
-                              MSGSIZE);  // udp message receive
-                seqNum = message[0];
-                if ((rand() % 100) > lossInterval) {
-                    received[seqNum] = true;  // marked received
-                    // cerr << "Received " << seqNum << endl;
-                } else {
-                    continue;
-                }
-            } else {
-                break;
-            }
-        }
+        // if (sock.pollRecvFrom() > 0) {
+        //  startedReceiving = true;
+        sock.recvFrom((char *)message,
+                      MSGSIZE);  // udp message receive
+        seqNum = message[0];
+        if ((rand() % 100) > lossInterval) {
+            received[seqNum] = true;  // marked received
+            // cerr << "Received " << seqNum << endl;
+        }  // else {
+           // continue;
+        //}
+        //} else {
+        //  break;
+        //}
+        //}
 
         // increase expected count until you hit an unsent packet
         // this means that the server will ack packets either in order or
@@ -213,7 +211,7 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
         }
 
         // ack any packet, even out of order
-        if (nextExpectedSequenceNum <= max && startedReceiving) {
+        if (nextExpectedSequenceNum <= max) {  //&& startedReceiving) {
             sock.ackTo((char *)&nextExpectedSequenceNum, sizeof(int));
             // cerr << "Cumulative ack: " << nextExpectedSequenceNum << endl;
             acksSent++;

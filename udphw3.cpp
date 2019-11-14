@@ -174,41 +174,44 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
     vector<bool> received(max, false);
     int acksSent = 0;
     int nextExpectedSequenceNum = 0;
-    bool startedReceiving = false;
+    // bool startedReceiving = false;
     while (nextExpectedSequenceNum < max) {
         int seqNum;
         Timer timer;
+        // COMMENTED CODE BELOW IS FOR TCP STYLE CUMULATIVE ACKS THIS GREATLY
+        // IMPROVES PERFORMANCE BUT IS NOT TO SPECIFICATION :(
         // expect to receive windowSize packets, set timer to keep server from
         // hanging
-        for (int i = 0; i < windowSize; i++) {
-            timer.start();
-            while ((timer.lap() < TIMEOUT) && (sock.pollRecvFrom() <= 0))
-                ;
+        // for (int i = 0; i < windowSize; i++) {
+        //     timer.start();
+        //     while ((timer.lap() < TIMEOUT / 4) && (sock.pollRecvFrom() <= 0))
+        //         ;
 
-            if (sock.pollRecvFrom() > 0) {
-                startedReceiving = true;
-                sock.recvFrom((char *)message,
-                              MSGSIZE);  // udp message receive
-                seqNum = message[0];
-                received[seqNum] = true;  // marked received
-            } else {
-                break;  // TIMEOUT, break loop and send cumulative ack
-            }
-        }
-        // increase expected count until you hit an packet the server has not
-        // received this means that the server will perform a cumulative ack
-        // based on timeout or if it received all expected packets
+        //     if (sock.pollRecvFrom() > 0) {
+        //         startedReceiving = true;
+        sock.recvFrom((char *)message,
+                      MSGSIZE);  // udp message receive
+        seqNum = message[0];
+        received[seqNum] = true;  // marked received
+        //     } else {
+        //         break;  // TIMEOUT, break loop and send cumulative ack
+        //     }
+        // }
+        // increase expected count until you hit an packet the server has
+        // not received this means that the server will perform a cumulative
+        // ack based on timeout or if it received all expected packets
         while (nextExpectedSequenceNum < max &&
                received[nextExpectedSequenceNum]) {
             nextExpectedSequenceNum++;
         }
         // ack any packet, even out of order
-        if (nextExpectedSequenceNum <= max && startedReceiving) {
+        if (nextExpectedSequenceNum <= max) {  //&& startedReceiving) {
             sock.ackTo((char *)&nextExpectedSequenceNum, sizeof(int));
-            //cerr << "Cumulative ack: " << nextExpectedSequenceNum << endl;
+            // cerr << "Cumulative ack: " << nextExpectedSequenceNum <<
+            // endl;
             acksSent++;
         }
-        // cerr << "message = " << message[0] << endl;
+        // cout << "message = " << message[0] << endl;
     }
     cout << "Server sent " << acksSent << " Acks" << endl;
 }
