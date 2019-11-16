@@ -107,7 +107,6 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
     Timer timer;
     // vector<bool> to mark packets that have been sent
     vector<bool> sent(max, false);
-    vector<bool> ackReceived(max, false);
     int retransmitted = 0;
     int nextInSequence = 0;
     int windowBase = 0;
@@ -116,10 +115,6 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
     while (nextInSequence < max || windowBase < max) {
         if ((nextInSequence < (windowBase + windowSize)) &&
             (nextInSequence < max)) {
-            while (ackReceived[nextInSequence] && nextInSequence < max) {
-                nextInSequence++;
-                cout << "moved past " << nextInSequence << endl;
-            }
             message[0] = nextInSequence;
             sock.sendTo((char *)message, MSGSIZE);  // udp message send
             // cerr << "Sent = " << nextInSequence << endl;
@@ -127,7 +122,6 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
             if (sent[nextInSequence]) {
                 retransmitted++;
             }
-
             // mark as sent
             sent[nextInSequence] = true;
             nextInSequence++;
@@ -142,12 +136,12 @@ int clientSlidingWindow(UdpSocket &sock, const int max, int message[],
             if (sock.pollRecvFrom() > 0) {
                 int ack;
                 sock.recvFrom((char *)&ack, sizeof(int));
-                ackReceived[ack] = true;
                 // check if you recieved that is in the window
                 // cerr << "Received = " << ack << endl;
-                if (ack >= windowBase) {
-                    windowBase = ack + 1;
+                if (ack > windowBase) {
+                    windowBase = ack;
                 }
+
             }
             // spinwait ended due to timeout set expected packet to first in
             // window
@@ -180,33 +174,49 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
     cerr << "server early retransmit test:" << endl;
     vector<bool> received(max, false);
     int acksSent = 0;
-    int lastInOrderPacket = 0;
+    int nextExpectedSequenceNum = 0;
     // bool startedReceiving = false;
-    while (!received[max - 1]) {
+    while (nextExpectedSequenceNum < max) {
         int seqNum;
-        Timer timer;
+        // Timer timer;
+        /// expect to receive windowSize packets, set timer to keep server from
+        // hanging
+        // for (int i = 0; i < windowSize; i++) {
+        //  timer.start();
+        // while ((timer.lap() < TIMEOUT / 4) && (sock.pollRecvFrom() <= 0))
+        //  ;
 
+        // if (sock.pollRecvFrom() > 0) {
+        //  startedReceiving = true;
         sock.recvFrom((char *)message,
                       MSGSIZE);  // udp message receive
         seqNum = message[0];
         if ((rand() % 100) > lossInterval) {
             received[seqNum] = true;  // marked received
+            // cerr << "Received " << seqNum << endl;
+        }  // else {
+           // continue;
+        //}
+        //} else {
+        //  break;
+        //}
+        //}
+
+        // increase expected count until you hit an unsent packet
+        // this means that the server will ack packets either in order or
+        // after a retransmission from the client
+        while (nextExpectedSequenceNum < max &&
+               received[nextExpectedSequenceNum]) {
+            nextExpectedSequenceNum++;
         }
-        // cout << "Received message " << seqNum << endl;
-        // increase expected count until you hit an packet the server has
-        // not received this means that the server will perform a cumulative
-        // ack based on timeout or if it received all expected packets
-        while (lastInOrderPacket < max && received[lastInOrderPacket]) {
-            lastInOrderPacket++;
-        }
-        lastInOrderPacket--;
-        // send cumulative ack
-        if (lastInOrderPacket <= max) {  //&& startedReceiving) {
-            sock.ackTo((char *)&lastInOrderPacket, sizeof(int));
-            // cerr << "Cumulative ack: " << seqNum << endl;
+
+        // ack any packet, even out of order
+        if (nextExpectedSequenceNum <= max) {  //&& startedReceiving) {
+            sock.ackTo((char *)&nextExpectedSequenceNum, sizeof(int));
+            // cerr << "Cumulative ack: " << nextExpectedSequenceNum << endl;
             acksSent++;
         }
-        // cout << "message = " << message[0] << endl;
+        // cerr << "message = " << message[0] << endl;
     }
     cout << "Loss Interval: " << lossInterval << endl;
     cout << "Server sent " << acksSent << " Acks" << endl;
