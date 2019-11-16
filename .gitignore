@@ -41,3 +41,5 @@ hw3case4
 *.xml
 *.cppcheck
 *.png
+*.pdf
+*.zip
