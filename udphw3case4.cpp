@@ -199,7 +199,10 @@ void serverEarlyRetrans(UdpSocket &sock, const int max, int message[],
         while (lastInOrderPacket < max && received[lastInOrderPacket]) {
             lastInOrderPacket++;
         }
-        lastInOrderPacket--;
+        if (lastInOrderPacket > 0) {
+            lastInOrderPacket--;
+        }
+
         // send cumulative ack
         if (lastInOrderPacket <= max) {  //&& startedReceiving) {
             sock.ackTo((char *)&lastInOrderPacket, sizeof(int));
